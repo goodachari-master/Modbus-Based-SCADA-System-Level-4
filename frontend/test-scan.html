@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Scan Test</title>
+    <style>
+        body {
+            background: #1a1a2e;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            padding: 40px;
+        }
+        
+        .test-btn {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .scan-progress {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 30px;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            margin-top: 20px;
+        }
+        
+        .progress-bar-container {
+            flex: 1;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            min-width: 200px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 50%, #667eea 100%);
+            background-size: 200% 100%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .progress-text {
+            color: #a0aec0;
+            font-size: 13px;
+            white-space: nowrap;
+            font-weight: 500;
+        }
+        
+        .progress-percent {
+            color: #667eea;
+            font-size: 16px;
+            font-weight: 700;
+            min-width: 50px;
+            text-align: right;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .log-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #667eea;
+            padding-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Quick Scan Diagnostic Test</h1>
+    
+    <button class="test-btn" onclick="testScan()">Test Progress Bar</button>
+    <button class="test-btn" onclick="testRealScan()" style="background: #48bb78;">Test Real API Scan</button>
+    
+    <div id="progressContainer"></div>
+    
+    <div class="log" id="log"></div>
+    
+    <script>
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const item = document.createElement('div');
+            item.className = 'log-item';
+            item.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(item);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+        
+        function testScan() {
+            log('🔘 Test button clicked!');
+            
+            // Create progress bar
+            const container = document.getElementById('progressContainer');
+            container.innerHTML = `
+                <div class="scan-progress" id="scanProgress">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <span class="progress-text">Scanning...</span>
+                    <span class="progress-percent" id="progressPercent">0%</span>
+                </div>
+            `;
+            
+            const progressBar = document.getElementById('progressBar');
+            const progressPercent = document.getElementById('progressPercent');
+            
+            log('✅ Progress bar created');
+            
+            // Simulate progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 5;
+                progressBar.style.width = progress + '%';
+                progressPercent.textContent = progress + '%';
+                log(`📊 Progress: ${progress}%`);
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    log('✅ Scan complete!');
+                    setTimeout(() => {
+                        container.innerHTML = '';
+                        log('🗑️ Progress bar removed');
+                    }, 2000);
+                }
+            }, 100);
+        }
+        
+        async function testRealScan() {
+            log('🚀 Starting real API scan...');
+            
+            try {
+                const response = await fetch('/api/network/scan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'quick' })
+                });
+                
+                log(`📡 API Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log(`✅ Found ${data.count} device(s)`);
+                log(`📋 Devices: ${JSON.stringify(data.devices, null, 2)}`);
+            } catch (error) {
+                log(`❌ Error: ${error.message}`);
+            }
+        }
+        
+        log('Page loaded - ready to test!');
+    </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Connection Test</title>
+    <style>
+        body { background: #1a1a2e; color: white; font-family: monospace; padding: 20px; }
+        .log { background: rgba(0,0,0,0.5); padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { color: #48bb78; }
+        .error { color: #f56565; }
+        .info { color: #4299e1; }
+    </style>
+</head>
+<body>
+    <h1>🔌 Backend Connection Test</h1>
+    <div id="logs" class="log"></div>
+    
+    <script>
+        const logs = document.getElementById('logs');
+        
+        function log(msg, type = 'info') {
+            logs.innerHTML += `<div class="${type}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            console.log(msg);
+        }
+        
+        async function testConnection() {
+            log('🧪 Starting connection tests...', 'info');
+            
+            // Test 1: Basic ping
+            try {
+                log('📡 Testing /api/ping...', 'info');
+                const response = await fetch('/api/ping');
+                const data = await response.json();
+                log(`✅ PING SUCCESS: ${JSON.stringify(data)}`, 'success');
+            } catch (error) {
+                log(`❌ PING FAILED: ${error.message}`, 'error');
+            }
+            
+            // Test 2: Get devices
+            try {
+                log('📡 Testing /api/devices...', 'info');
+                const response = await fetch('/api/devices');
+                const data = await response.json();
+                log(`✅ DEVICES SUCCESS: Found ${data.length} device(s)`, 'success');
+                log(`📋 Devices: ${JSON.stringify(data, null, 2)}`, 'info');
+                
+                if (data.length > 0) {
+                    log(`🎯 First device room: "${data[0].room}"`, 'success');
+                    log(`📍 First device IP: ${data[0].ip}`, 'success');
+                }
+            } catch (error) {
+                log(`❌ DEVICES FAILED: ${error.message}`, 'error');
+            }
+            
+            // Test 3: Network info
+            try {
+                log('📡 Testing /api/network/info...', 'info');
+                const response = await fetch('/api/network/info');
+                const data = await response.json();
+                log(`✅ NETWORK INFO SUCCESS: ${JSON.stringify(data)}`, 'success');
+            } catch (error) {
+                log(`❌ NETWORK INFO FAILED: ${error.message}`, 'error');
+            }
+            
+            log('🏁 Connection tests complete!', 'info');
+        }
+        
+        // Run tests on page load
+        testConnection();
+    </script>
+</body>
+</html>

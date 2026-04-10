@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-ESP32 SCADA System - Room Control</title>
+    <link rel="stylesheet" href="css/style.css?v=3">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Status Indicators -->
+        <header>
+            <div class="logo">
+                <h1>🏭 Multi-ESP32 SCADA System</h1>
+                <span class="version">v4.0 - Room Control</span>
+            </div>
+            <div class="status-panel">
+                <!-- Active Device Status -->
+                <div class="status-item" id="activeDeviceStatus">
+                    <span class="status-label">Active Device</span>
+                    <span class="status-text" id="activeDeviceText">None Selected</span>
+                </div>
+                
+                <!-- Backend Status -->
+                <div class="status-item" id="backendStatus">
+                    <span class="status-label">Backend</span>
+                    <span class="status-indicator connected" id="backendIndicator"></span>
+                    <span class="status-text" id="backendText">Running</span>
+                </div>
+                
+                <!-- Connection Info -->
+                <div class="connection-info" id="connectionInfo">
+                    <span class="info-label">Ready</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Device Selection Panel -->
+        <div class="device-panel">
+            <div class="panel-title">
+                <h3>🏠 ESP32 Devices by Room</h3>
+                <span class="help-text">Select a room to monitor and control</span>
+            </div>
+            
+            <!-- Discovery Controls -->
+            <div class="discovery-controls">
+                <button id="quickScanBtn" class="btn btn-secondary">
+                    <span class="scan-icon">⚡</span> Quick Scan (ESP32 only)
+                </button>
+                <button id="toggleDisconnectedBtn" class="btn btn-secondary" title="Click to show/hide disconnected devices">
+                    👁️ Show Disconnected
+                </button>
+                <div class="scan-progress" id="scanProgress" style="display: none;">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar"></div>
+                    </div>
+                    <span id="progressText" class="progress-text">Scanning for ESP32 devices...</span>
+                    <span id="progressPercent" class="progress-percent">0%</span>
+                </div>
+            </div>
+            
+            <!-- Device Grid -->
+            <div class="device-list-container">
+                <div class="device-grid" id="deviceGrid">
+                    <div class="device-card loading">
+                        <p>🔍 Click "Quick Scan" to discover ESP32 devices on your network</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Manual Add Form -->
+            <div class="manual-add-form">
+                <h4>➕ Manually Add Device by Room</h4>
+                <div class="form-row">
+                    <div class="input-group">
+                        <label>Room Name:</label>
+                        <input type="text" id="manualRoomName" placeholder="e.g., Living Room, Bedroom, Kitchen">
+                    </div>
+                    <div class="input-group">
+                        <label>IP Address:</label>
+                        <input type="text" id="manualIP" placeholder="192.168.1.100">
+                    </div>
+                    <div class="input-group">
+                        <label>Port:</label>
+                        <input type="number" id="manualPort" value="502" placeholder="502">
+                    </div>
+                    <div class="input-group">
+                        <button id="addDeviceBtn" class="btn btn-primary">Add Device</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Control Panel -->
+        <div class="system-panel" id="systemPanel" style="display: none;">
+            <div class="panel-title">
+                <h3>⚙️ System Control - <span id="activeRoomName">No Device Selected</span></h3>
+            </div>
+            <div class="control-bar">
+                <button id="startSystem" class="btn btn-success" disabled>Start Monitoring</button>
+                <button id="stopSystem" class="btn btn-danger" disabled>Stop Monitoring</button>
+                <button id="disconnectDeviceBtn" class="btn btn-warning" disabled>Disconnect</button>
+                <div class="system-status-badge" id="systemStatusBadge">
+                    <span class="badge idle">System Idle</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div class="dashboard" id="dashboard" style="display: none;">
+            <!-- Device Info Card -->
+            <div class="card info-card full-width">
+                <div class="card-header">
+                    <h2>📡 Active Device Information</h2>
+                </div>
+                <div class="device-info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Room:</span>
+                        <span class="info-value" id="infoRoom">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Device ID:</span>
+                        <span class="info-value" id="infoDeviceId">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">IP Address:</span>
+                        <span class="info-value" id="infoIP">--</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" id="infoStatus">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Temperature Card -->
+            <div class="card sensor-card">
+                <div class="card-header">
+                    <h2>🌡️ Temperature Monitor</h2>
+                    <div class="sensor-badge" id="tempBadge">Normal</div>
+                </div>
+                <div class="sensor-display">
+                    <div class="sensor-value" id="tempValue">--</div>
+                    <div class="sensor-unit">°C</div>
+                </div>
+                <div class="sensor-controls">
+                    <div class="threshold-display">
+                        <span>LED: <strong id="tempThreshold">30</strong>°C</span>
+                        <span>Buzzer: <strong id="buzzerTempThreshold">35</strong>°C</span>
+                    </div>
+                    <div class="device-row">
+                        <div class="device-info">
+                            <span class="device-led" id="tempLED"></span>
+                            <span class="device-label">Temp LED</span>
+                        </div>
+                        <div class="device-state" id="tempLEDState">OFF</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Humidity Card -->
+            <div class="card sensor-card">
+                <div class="card-header">
+                    <h2>💧 Humidity Monitor</h2>
+                    <div class="sensor-badge" id="humidityBadge">Normal</div>
+                </div>
+                <div class="sensor-display">
+                    <div class="sensor-value" id="humidityValue">--</div>
+                    <div class="sensor-unit">%</div>
+                </div>
+                <div class="sensor-controls">
+                    <div class="threshold-display">
+                        <span>LED: <strong id="humidityThreshold">70</strong>%</span>
+                        <span>Buzzer: <strong id="buzzerHumidityThreshold">80</strong>%</span>
+                    </div>
+                    <div class="device-row">
+                        <div class="device-info">
+                            <span class="device-led" id="humidityLED"></span>
+                            <span class="device-label">Humidity LED</span>
+                        </div>
+                        <div class="device-state" id="humidityLEDState">OFF</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Buzzer Card -->
+            <div class="card buzzer-card">
+                <div class="card-header">
+                    <h2>🔊 Common Buzzer</h2>
+                    <div class="sensor-badge" id="buzzerBadge">OFF</div>
+                </div>
+                <div class="buzzer-display">
+                    <div class="buzzer-status" id="buzzerStatus">
+                        <span class="buzzer-icon">🔇</span>
+                        <span class="buzzer-text">Inactive</span>
+                    </div>
+                </div>
+                <div class="device-row">
+                    <div class="device-info">
+                        <span class="device-led" id="buzzerLED"></span>
+                        <span class="device-label">Buzzer</span>
+                    </div>
+                    <div class="device-state" id="buzzerState">OFF</div>
+                </div>
+            </div>
+
+            <!-- Cyclic Manual Control Card -->
+            <div class="card manual-card full-width">
+                <div class="card-header">
+                    <h2>🎮 Cyclic Manual Control</h2>
+                    <span class="global-mode" id="globalMode">⚡ All Auto</span>
+                </div>
+                <div class="manual-grid">
+                    <!-- Temperature LED Control -->
+                    <div class="manual-item">
+                        <div class="manual-header">
+                            <span class="device-icon">🌡️</span>
+                            <h4>Temperature LED</h4>
+                        </div>
+                        <div class="mode-indicator">
+                            <span class="mode-label">Mode:</span>
+                            <span class="mode-badge" id="tempLEDMode">AUTO</span>
+                        </div>
+                        <button id="tempLEDCycle" class="btn cycle-btn" data-device="temp_led">
+                            <span class="cycle-icon">↻</span>
+                            <span class="cycle-text">Click to Cycle</span>
+                        </button>
+                        <div class="current-state">
+                            Current: <span id="tempLEDCurrent">OFF</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Humidity LED Control -->
+                    <div class="manual-item">
+                        <div class="manual-header">
+                            <span class="device-icon">💧</span>
+                            <h4>Humidity LED</h4>
+                        </div>
+                        <div class="mode-indicator">
+                            <span class="mode-label">Mode:</span>
+                            <span class="mode-badge" id="humidityLEDMode">AUTO</span>
+                        </div>
+                        <button id="humidityLEDCycle" class="btn cycle-btn" data-device="humidity_led">
+                            <span class="cycle-icon">↻</span>
+                            <span class="cycle-text">Click to Cycle</span>
+                        </button>
+                        <div class="current-state">
+                            Current: <span id="humidityLEDCurrent">OFF</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Common Buzzer Control -->
+                    <div class="manual-item">
+                        <div class="manual-header">
+                            <span class="device-icon">🔊</span>
+                            <h4>Common Buzzer</h4>
+                        </div>
+                        <div class="mode-indicator">
+                            <span class="mode-label">Mode:</span>
+                            <span class="mode-badge" id="buzzerMode">AUTO</span>
+                        </div>
+                        <button id="buzzerCycle" class="btn cycle-btn" data-device="buzzer">
+                            <span class="cycle-icon">↻</span>
+                            <span class="cycle-text">Click to Cycle</span>
+                        </button>
+                        <div class="current-state">
+                            Current: <span id="buzzerCurrent">OFF</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Threshold Settings Card -->
+            <div class="card settings-card full-width">
+                <div class="card-header">
+                    <h2>⚙️ Threshold Configuration</h2>
+                </div>
+                <div class="settings-grid">
+                    <!-- Temperature Settings -->
+                    <div class="setting-group">
+                        <h3>🌡️ Temperature Thresholds</h3>
+                        <div class="setting-item">
+                            <label>LED ON at (°C):</label>
+                            <div class="slider-container">
+                                <input type="range" id="tempThresholdSlider" class="threshold-slider" 
+                                       min="0" max="50" step="0.5" value="30">
+                                <input type="number" id="tempThresholdInput" class="threshold-input" 
+                                       step="0.1" min="0" max="100" value="30">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Buzzer ON at (°C):</label>
+                            <div class="slider-container">
+                                <input type="range" id="buzzerTempThresholdSlider" class="threshold-slider" 
+                                       min="0" max="50" step="0.5" value="35">
+                                <input type="number" id="buzzerTempThresholdInput" class="threshold-input" 
+                                       step="0.1" min="0" max="100" value="35">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Humidity Settings -->
+                    <div class="setting-group">
+                        <h3>💧 Humidity Thresholds</h3>
+                        <div class="setting-item">
+                            <label>LED ON at (%):</label>
+                            <div class="slider-container">
+                                <input type="range" id="humidityThresholdSlider" class="threshold-slider" 
+                                       min="0" max="100" step="1" value="70">
+                                <input type="number" id="humidityThresholdInput" class="threshold-input" 
+                                       step="1" min="0" max="100" value="70">
+                            </div>
+                        </div>
+                        <div class="setting-item">
+                            <label>Buzzer ON at (%):</label>
+                            <div class="slider-container">
+                                <input type="range" id="buzzerHumidityThresholdSlider" class="threshold-slider" 
+                                       min="0" max="100" step="1" value="80">
+                                <input type="number" id="buzzerHumidityThresholdInput" class="threshold-input" 
+                                       step="1" min="0" max="100" value="80">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button id="saveThresholds" class="btn btn-primary btn-full">Save Thresholds</button>
+            </div>
+
+            <!-- Sensor History Chart -->
+            <div class="card chart-card full-width">
+                <div class="card-header">
+                    <h2>📈 Sensor History (Last 10 Readings)</h2>
+                    <div class="chart-controls">
+                        <button id="clearBuffer" class="btn btn-small btn-warning">Clear Buffer</button>
+                        <span class="buffer-info" id="bufferInfo">0/10</span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="sensorChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Events Log -->
+            <div class="card events-card full-width">
+                <div class="card-header">
+                    <h2>📋 Events Log</h2>
+                    <div class="event-controls">
+                        <span class="event-count" id="eventCount">0 events</span>
+                        <button id="refreshEvents" class="btn btn-small">↻</button>
+                    </div>
+                </div>
+                <div class="events-log" id="eventsLog">
+                    <div class="event-item">No events</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Device Selected Message -->
+        <div class="no-device-message" id="noDeviceMessage">
+            <div class="message-content">
+                <div class="message-icon">🏠</div>
+                <h2>No Device Selected</h2>
+                <p>Click "Scan Network" to discover ESP32 devices, then click "Connect" on a device card to start monitoring</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/app.js?v=3"></script>
+</body>
+</html>
